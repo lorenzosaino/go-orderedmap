@@ -12,16 +12,16 @@ Go implementation of an ordered map using generics.
 An ordered map is a map that additionally maintains ordering among its entries.
 This data structure can be used to solve a variety of problems: one very common use case is implementing LRU or LRU-like cache replacement policies.
 
-This implementation supports O(1) lookup, removal, insert to front/back, insert before/after a specific key, move to front/back, move before/after a specific key.
+This implementation supports O(1) lookup, removal, insertion to front/back, insertion before/after a specific key, move to front/back, move before/after a specific key.
 
 Under the hood this is implemented as a combination of a map and doubly-linked list, whereby each value in the map is node of the list.
-The list is implemented by forking the standard library `containers/list` package and adding support for generics.
+The list is implemented by forking the standard library [`container/list`](https://pkg.go.dev/container/list) package and adding support for generics.
 
 This implementation is not safe for concurrent usage.
 
 ## Installation
 
-You can get this library running
+You can get this library by invoking
 
     go get -u github.com/lorenzosaino/go-orderedmap
 

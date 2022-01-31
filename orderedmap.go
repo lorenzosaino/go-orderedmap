@@ -1,11 +1,22 @@
-// Package ordermap implements an ordered map.
+// Package ordermap implements an ordered map using generics.
 //
-// An ordered map is a map whose values are all connected
+// An ordered map is a map whose values are ordered and all connected
 // with a doubly-linked list. It provides O(1) lookup,
-// removal, insertion and move to front/back.
+// removal, removal, insertion to front/back,
+// insertion before/after a specific key,
+// move to front/back, move before/after a specific key.
 //
-// To iterate over a map (where m is a *OrderedMap):
+// This implementation is not safe for concurrent usage. You
+// may want to use a sync.RWLock to synchronize access to it
+// if you intend to use it concurrently.
+//
+// To iterate over a map (where m is an *OrderedMap):
 //	for e, ok := m.Front(); ok; e, ok = m.Next(e) {
+//		// do something with e
+//	}
+//
+// Similarly, to reverse iterate over a map::
+//	for e, ok := m.Back(); ok; e, ok = m.Prev(e) {
 //		// do something with e
 //	}
 //
