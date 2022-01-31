@@ -24,6 +24,7 @@ package orderedmap
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/lorenzosaino/go-orderedmap/internal/list"
 )
@@ -234,6 +235,26 @@ func (m *OrderedMap[K, V]) Len() int {
 func (m *OrderedMap[K, V]) Clear() {
 	m.m = make(map[K]*list.Element[Item[K, V]])
 	m.l.Init()
+}
+
+// Filter returns a filtered copy of the ordered map.
+// The returned map only includes the (key, value) items such that
+// f(key, value) == true
+func (m *OrderedMap[K, V]) Filter(f func(key K, value V) bool) *OrderedMap[K, V] {
+	out := New[K, V]()
+	for item, ok := m.Front(); ok; item, ok = m.Next(item) {
+		if f != nil && !f(item.Key, item.Value) {
+			continue
+		}
+		if err := out.PushBack(item.Key, item.Value); err != nil {
+			// while generally we should never panic from a library, this
+			// error should never happen because all keys of the ordered map
+			// should be unique. If this error occurs, it is because of a bug
+			// in this library that needs to be fixed.
+			panic(fmt.Sprintf("error trying to insert key %v: %v", item.Key, err))
+		}
+	}
+	return out
 }
 
 // Map returns a map of all items stored in the OrderedMap.
