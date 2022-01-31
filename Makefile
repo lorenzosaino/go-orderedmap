@@ -1,6 +1,6 @@
 SHELL = /bin/bash -euo pipefail
 
-GO ?= go1.18beta1
+GO ?= go
 
 # Variables for container targets
 GO_VERSION ?= 1.18beta1
