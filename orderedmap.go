@@ -197,6 +197,9 @@ func (m *OrderedMap[K, V]) MoveToBack(key K) error {
 // It returns ErrKeyMissing if the key to be moved is missing
 // and ErrMarkKeyMissing if the mark key is missing.
 func (m *OrderedMap[K, V]) MoveAfter(key K, mark K) error {
+	if key == mark {
+		return nil
+	}
 	el, ok := m.m[key]
 	if !ok {
 		return ErrKeyMissing
@@ -214,6 +217,9 @@ func (m *OrderedMap[K, V]) MoveAfter(key K, mark K) error {
 // It returns ErrKeyMissing if the key to be moved is missing
 // and ErrMarkKeyMissing if the mark key is missing.
 func (m *OrderedMap[K, V]) MoveBefore(key K, mark K) error {
+	if key == mark {
+		return nil
+	}
 	el, ok := m.m[key]
 	if !ok {
 		return ErrKeyMissing

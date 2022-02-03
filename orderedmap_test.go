@@ -1,6 +1,7 @@
 package orderedmap
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -9,6 +10,14 @@ import (
 func TestEmpty(t *testing.T) {
 	m := New[int, string]()
 	checkAll(t, m, []Item[int, string]{})
+
+	m.Clear()
+	checkAll(t, m, []Item[int, string]{})
+}
+
+func TestClear(t *testing.T) {
+	m := newFromItems(t, []Item[int, string]{{1, "one"}, {2, "two"}})
+	checkAll(t, m, []Item[int, string]{{1, "one"}, {2, "two"}})
 
 	m.Clear()
 	checkAll(t, m, []Item[int, string]{})
@@ -52,168 +61,830 @@ func TestPointers(t *testing.T) {
 	}
 }
 
+func TestGet(t *testing.T) {
+	cases := []struct {
+		name      string
+		items     []Item[int, string]
+		key       int
+		wantValue string
+		ok        bool
+	}{
+		{
+			name:  "empty",
+			items: []Item[int, string]{},
+			key:   1,
+		},
+		{
+			name:      "existing key",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}},
+			key:       1,
+			wantValue: "one",
+			ok:        true,
+		},
+		{
+			name:  "missing key",
+			items: []Item[int, string]{{1, "one"}, {2, "two"}},
+			key:   3,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := newFromItems(t, c.items)
+			gotValue, ok := m.Get(c.key)
+			if ok != c.ok {
+				t.Fatalf("unexpected ok: want: %t, got %t", c.ok, ok)
+			}
+			if gotValue != c.wantValue {
+				t.Fatalf("unexpected value: want: %v, got %v", c.wantValue, gotValue)
+			}
+			// validate that the map was not modified by the Get operation
+			checkAll(t, m, c.items)
+		})
+	}
+}
+
+func TestUpdate(t *testing.T) {
+	cases := []struct {
+		name  string
+		items []Item[int, string]
+		key   int
+		value string
+		want  []Item[int, string]
+		err   error
+	}{
+		{
+			name:  "empty",
+			items: []Item[int, string]{},
+			key:   1,
+			want:  []Item[int, string]{},
+			err:   ErrKeyMissing,
+		},
+		{
+			name:  "update key",
+			items: []Item[int, string]{{1, "one"}, {2, "two"}},
+			key:   1,
+			value: "newone",
+			want:  []Item[int, string]{{1, "newone"}, {2, "two"}},
+		},
+		{
+			name:  "no-op",
+			items: []Item[int, string]{{1, "one"}, {2, "two"}},
+			key:   1,
+			value: "one",
+			want:  []Item[int, string]{{1, "one"}, {2, "two"}},
+		},
+		{
+			name:  "missing key",
+			items: []Item[int, string]{{1, "one"}, {2, "two"}},
+			key:   3,
+			want:  []Item[int, string]{{1, "one"}, {2, "two"}},
+			err:   ErrKeyMissing,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := newFromItems(t, c.items)
+			wantOldValue, _ := m.Get(c.key)
+			gotOldValue, err := m.Update(c.key, c.value)
+			if !errors.Is(err, c.err) {
+				t.Fatalf("unexpected err: want: %v, got %v", c.err, err)
+			}
+			if gotOldValue != wantOldValue {
+				t.Fatalf("unexpected old value: want: %v, got %v", wantOldValue, gotOldValue)
+			}
+			checkAll(t, m, c.want)
+		})
+	}
+}
+
 func TestPushBack(t *testing.T) {
-	m := New[int, string]()
-	if err := m.PushBack(1, "one"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	cases := []struct {
+		name       string
+		items      []Item[int, string]
+		itemToPush Item[int, string]
+		want       []Item[int, string]
+		err        error
+	}{
+		{
+			name:       "empty",
+			itemToPush: Item[int, string]{1, "one"},
+			want:       []Item[int, string]{{1, "one"}},
+		},
+		{
+			name:       "existing key",
+			items:      []Item[int, string]{{1, "one"}, {2, "two"}},
+			itemToPush: Item[int, string]{1, "one"},
+			want:       []Item[int, string]{{1, "one"}, {2, "two"}},
+			err:        ErrKeyAlreadyPresent,
+		},
+		{
+			name:       "push new key",
+			items:      []Item[int, string]{{1, "one"}, {2, "two"}},
+			itemToPush: Item[int, string]{3, "three"},
+			want:       []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+		},
 	}
-	checkAll(t, m, []Item[int, string]{{1, "one"}})
-	if err := m.PushBack(2, "two"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := newFromItems(t, c.items)
+			if err := m.PushBack(c.itemToPush.Key, c.itemToPush.Value); !errors.Is(err, c.err) {
+				t.Fatalf("unexpected error: want: %v, got %v", c.err, err)
+			}
+			checkAll(t, m, c.want)
+		})
 	}
-	checkAll(t, m, []Item[int, string]{{1, "one"}, {2, "two"}})
-	m.Clear()
-	checkAll(t, m, []Item[int, string]{})
 }
 
 func TestPushFront(t *testing.T) {
-	m := New[int, string]()
-	if err := m.PushFront(1, "one"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	cases := []struct {
+		name       string
+		items      []Item[int, string]
+		itemToPush Item[int, string]
+		want       []Item[int, string]
+		err        error
+	}{
+		{
+			name:       "empty",
+			itemToPush: Item[int, string]{1, "one"},
+			want:       []Item[int, string]{{1, "one"}},
+		},
+		{
+			name:       "existing key",
+			items:      []Item[int, string]{{1, "one"}, {2, "two"}},
+			itemToPush: Item[int, string]{1, "one"},
+			want:       []Item[int, string]{{1, "one"}, {2, "two"}},
+			err:        ErrKeyAlreadyPresent,
+		},
+		{
+			name:       "push new key",
+			items:      []Item[int, string]{{2, "two"}, {3, "three"}},
+			itemToPush: Item[int, string]{1, "one"},
+			want:       []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+		},
 	}
-	checkAll(t, m, []Item[int, string]{{1, "one"}})
-	if err := m.PushFront(2, "two"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := newFromItems(t, c.items)
+			if err := m.PushFront(c.itemToPush.Key, c.itemToPush.Value); !errors.Is(err, c.err) {
+				t.Fatalf("unexpected error: want: %v, got %v", c.err, err)
+			}
+			checkAll(t, m, c.want)
+		})
 	}
-	checkAll(t, m, []Item[int, string]{{2, "two"}, {1, "one"}})
-	m.Clear()
-	checkAll(t, m, []Item[int, string]{})
 }
 
 func TestInsertAfter(t *testing.T) {
-	m := New[int, string]()
-	if err := m.InsertAfter(1, "one", 0); err == nil {
-		t.Fatal("expected error, none got")
+	cases := []struct {
+		name         string
+		items        []Item[int, string]
+		itemToInsert Item[int, string]
+		mark         int
+		want         []Item[int, string]
+		err          error
+	}{
+		{
+			name:         "empty",
+			itemToInsert: Item[int, string]{1, "one"},
+			mark:         2,
+			want:         []Item[int, string]{},
+			err:          ErrMarkKeyMissing,
+		},
+		{
+			name:         "empty and mark equals key",
+			itemToInsert: Item[int, string]{2, "two"},
+			mark:         2,
+			want:         []Item[int, string]{},
+			err:          ErrMarkKeyMissing,
+		},
+		{
+			name:         "one item",
+			items:        []Item[int, string]{{1, "one"}},
+			itemToInsert: Item[int, string]{2, "two"},
+			mark:         1,
+			want:         []Item[int, string]{{1, "one"}, {2, "two"}},
+		},
+		{
+			name:         "insert at back",
+			items:        []Item[int, string]{{1, "one"}, {2, "two"}},
+			itemToInsert: Item[int, string]{3, "three"},
+			mark:         2,
+			want:         []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+		},
+		{
+			name:         "insert in the middle",
+			items:        []Item[int, string]{{1, "one"}, {3, "three"}},
+			itemToInsert: Item[int, string]{2, "two"},
+			mark:         1,
+			want:         []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+		},
+		{
+			name:         "mark missing",
+			items:        []Item[int, string]{{1, "one"}, {2, "two"}},
+			itemToInsert: Item[int, string]{3, "three"},
+			mark:         4,
+			want:         []Item[int, string]{{1, "one"}, {2, "two"}},
+			err:          ErrMarkKeyMissing,
+		},
+		{
+			name:         "key already present",
+			items:        []Item[int, string]{{1, "one"}, {2, "two"}},
+			itemToInsert: Item[int, string]{2, "two"},
+			mark:         1,
+			want:         []Item[int, string]{{1, "one"}, {2, "two"}},
+			err:          ErrKeyAlreadyPresent,
+		},
 	}
-	if err := m.PushFront(0, "zero"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := newFromItems(t, c.items)
+			if err := m.InsertAfter(c.itemToInsert.Key, c.itemToInsert.Value, c.mark); !errors.Is(err, c.err) {
+				t.Fatalf("unexpected error: want: %v, got %v", c.err, err)
+			}
+			checkAll(t, m, c.want)
+		})
 	}
-	if err := m.InsertAfter(2, "two", 0); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	checkAll(t, m, []Item[int, string]{{0, "zero"}, {2, "two"}})
-	if err := m.InsertAfter(1, "one", 0); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	checkAll(t, m, []Item[int, string]{{0, "zero"}, {1, "one"}, {2, "two"}})
-	if err := m.InsertAfter(3, "three", 2); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	checkAll(t, m, []Item[int, string]{{0, "zero"}, {1, "one"}, {2, "two"}, {3, "three"}})
 }
 
 func TestInsertBefore(t *testing.T) {
-	m := New[int, string]()
-	if err := m.InsertBefore(1, "one", 0); err != ErrMarkKeyMissing {
-		t.Fatalf("unexpected error: %v", err)
+	cases := []struct {
+		name         string
+		items        []Item[int, string]
+		itemToInsert Item[int, string]
+		mark         int
+		want         []Item[int, string]
+		err          error
+	}{
+		{
+			name:         "empty",
+			itemToInsert: Item[int, string]{1, "one"},
+			mark:         2,
+			want:         []Item[int, string]{},
+			err:          ErrMarkKeyMissing,
+		},
+		{
+			name:         "empty and mark equals key",
+			itemToInsert: Item[int, string]{2, "two"},
+			mark:         2,
+			want:         []Item[int, string]{},
+			err:          ErrMarkKeyMissing,
+		},
+		{
+			name:         "one item",
+			items:        []Item[int, string]{{2, "two"}},
+			itemToInsert: Item[int, string]{1, "one"},
+			mark:         2,
+			want:         []Item[int, string]{{1, "one"}, {2, "two"}},
+		},
+		{
+			name:         "insert at front",
+			items:        []Item[int, string]{{2, "two"}, {3, "three"}},
+			itemToInsert: Item[int, string]{1, "one"},
+			mark:         2,
+			want:         []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+		},
+		{
+			name:         "insert in the middle",
+			items:        []Item[int, string]{{1, "one"}, {3, "three"}},
+			itemToInsert: Item[int, string]{2, "two"},
+			mark:         3,
+			want:         []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+		},
+		{
+			name:         "mark missing",
+			items:        []Item[int, string]{{1, "one"}, {2, "two"}},
+			itemToInsert: Item[int, string]{3, "three"},
+			mark:         4,
+			want:         []Item[int, string]{{1, "one"}, {2, "two"}},
+			err:          ErrMarkKeyMissing,
+		},
+		{
+			name:         "key already present",
+			items:        []Item[int, string]{{1, "one"}, {2, "two"}},
+			itemToInsert: Item[int, string]{1, "one"},
+			mark:         2,
+			want:         []Item[int, string]{{1, "one"}, {2, "two"}},
+			err:          ErrKeyAlreadyPresent,
+		},
 	}
-	if err := m.PushFront(0, "zero"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := newFromItems(t, c.items)
+			if err := m.InsertBefore(c.itemToInsert.Key, c.itemToInsert.Value, c.mark); !errors.Is(err, c.err) {
+				t.Fatalf("unexpected error: want: %v, got %v", c.err, err)
+			}
+			checkAll(t, m, c.want)
+		})
 	}
-	if err := m.InsertBefore(2, "two", 0); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	checkAll(t, m, []Item[int, string]{{2, "two"}, {0, "zero"}})
-	if err := m.InsertBefore(1, "one", 0); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	checkAll(t, m, []Item[int, string]{{2, "two"}, {1, "one"}, {0, "zero"}})
-	if err := m.InsertBefore(3, "three", 2); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	checkAll(t, m, []Item[int, string]{{3, "three"}, {2, "two"}, {1, "one"}, {0, "zero"}})
 }
 
 func TestMoveToFront(t *testing.T) {
-	m := New[int, string]()
-
-	if err := m.MoveToFront(1); err != ErrKeyMissing {
-		t.Fatalf("unexpected error: %v", err)
+	cases := []struct {
+		name      string
+		items     []Item[int, string]
+		keyToMove int
+		want      []Item[int, string]
+		err       error
+	}{
+		{
+			name:      "empty",
+			keyToMove: 1,
+			want:      []Item[int, string]{},
+			err:       ErrKeyMissing,
+		},
+		{
+			name:      "no-op",
+			items:     []Item[int, string]{{1, "one"}},
+			keyToMove: 1,
+			want:      []Item[int, string]{{1, "one"}},
+		},
+		{
+			name:      "move from front",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 1,
+			want:      []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+		},
+		{
+			name:      "move from middle",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 2,
+			want:      []Item[int, string]{{2, "two"}, {1, "one"}, {3, "three"}},
+		},
+		{
+			name:      "move from back",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 3,
+			want:      []Item[int, string]{{3, "three"}, {1, "one"}, {2, "two"}},
+		},
+		{
+			name:      "missing key",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 4,
+			want:      []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			err:       ErrKeyMissing,
+		},
 	}
-
-	if err := m.PushFront(1, "one"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if err := m.MoveToFront(1); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	checkAll(t, m, []Item[int, string]{{1, "one"}})
-
-	if err := m.PushFront(2, "two"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	checkAll(t, m, []Item[int, string]{{2, "two"}, {1, "one"}})
-
-	if err := m.MoveToFront(1); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	checkAll(t, m, []Item[int, string]{{1, "one"}, {2, "two"}})
-
-	if err := m.PushFront(0, "zero"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	checkAll(t, m, []Item[int, string]{{0, "zero"}, {1, "one"}, {2, "two"}})
-
-	if err := m.MoveToFront(1); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	checkAll(t, m, []Item[int, string]{{1, "one"}, {0, "zero"}, {2, "two"}})
-
-	if err := m.MoveToFront(2); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	checkAll(t, m, []Item[int, string]{{2, "two"}, {1, "one"}, {0, "zero"}})
-
-	if err := m.MoveToFront(3); err != ErrKeyMissing {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestMoveToBaack(t *testing.T) {
-	m := New[int, string]()
-
-	if err := m.MoveToBack(1); err != ErrKeyMissing {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if err := m.PushBack(1, "one"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if err := m.MoveToBack(1); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	checkAll(t, m, []Item[int, string]{{1, "one"}})
-
-	if err := m.PushBack(2, "two"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	checkAll(t, m, []Item[int, string]{{1, "one"}, {2, "two"}})
-
-	if err := m.MoveToBack(1); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	checkAll(t, m, []Item[int, string]{{2, "two"}, {1, "one"}})
-
-	if err := m.PushBack(0, "zero"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	checkAll(t, m, []Item[int, string]{{2, "two"}, {1, "one"}, {0, "zero"}})
-
-	if err := m.MoveToBack(1); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	checkAll(t, m, []Item[int, string]{{2, "two"}, {0, "zero"}, {1, "one"}})
-
-	if err := m.MoveToBack(2); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	checkAll(t, m, []Item[int, string]{{0, "zero"}, {1, "one"}, {2, "two"}})
-
-	if err := m.MoveToBack(3); err != ErrKeyMissing {
-		t.Fatalf("unexpected error: %v", err)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := newFromItems(t, c.items)
+			if err := m.MoveToFront(c.keyToMove); !errors.Is(err, c.err) {
+				t.Fatalf("unexpected error: want: %v, got %v", c.err, err)
+			}
+			checkAll(t, m, c.want)
+		})
 	}
 }
 
+func TestMoveToBack(t *testing.T) {
+	cases := []struct {
+		name      string
+		items     []Item[int, string]
+		keyToMove int
+		want      []Item[int, string]
+		err       error
+	}{
+		{
+			name:      "empty",
+			keyToMove: 1,
+			want:      []Item[int, string]{},
+			err:       ErrKeyMissing,
+		},
+		{
+			name:      "no-op",
+			items:     []Item[int, string]{{1, "one"}},
+			keyToMove: 1,
+			want:      []Item[int, string]{{1, "one"}},
+		},
+		{
+			name:      "move from front",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 1,
+			want:      []Item[int, string]{{2, "two"}, {3, "three"}, {1, "one"}},
+		},
+		{
+			name:      "move from middle",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 2,
+			want:      []Item[int, string]{{1, "one"}, {3, "three"}, {2, "two"}},
+		},
+		{
+			name:      "move from back",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 3,
+			want:      []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+		},
+		{
+			name:      "missing key",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 4,
+			want:      []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			err:       ErrKeyMissing,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := newFromItems(t, c.items)
+			if err := m.MoveToBack(c.keyToMove); !errors.Is(err, c.err) {
+				t.Fatalf("unexpected error: want: %v, got %v", c.err, err)
+			}
+			checkAll(t, m, c.want)
+		})
+	}
+}
+
+func TestMoveAfter(t *testing.T) {
+	cases := []struct {
+		name      string
+		items     []Item[int, string]
+		keyToMove int
+		mark      int
+		want      []Item[int, string]
+		err       error
+	}{
+		{
+			name:      "empty",
+			keyToMove: 1,
+			mark:      2,
+			want:      []Item[int, string]{},
+			err:       ErrKeyMissing,
+		},
+		{
+			name:      "one item",
+			items:     []Item[int, string]{{1, "one"}},
+			keyToMove: 1,
+			mark:      1,
+			want:      []Item[int, string]{{1, "one"}},
+		},
+		{
+			name:      "mark equals key",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 2,
+			mark:      2,
+			want:      []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+		},
+		{
+			name:      "move front to middle",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 1,
+			mark:      2,
+			want:      []Item[int, string]{{2, "two"}, {1, "one"}, {3, "three"}},
+		},
+		{
+			name:      "move front to back",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 1,
+			mark:      3,
+			want:      []Item[int, string]{{2, "two"}, {3, "three"}, {1, "one"}},
+		},
+		{
+			name:      "move middle to back",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 2,
+			mark:      3,
+			want:      []Item[int, string]{{1, "one"}, {3, "three"}, {2, "two"}},
+		},
+		{
+			name:      "move back to middle",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 3,
+			mark:      1,
+			want:      []Item[int, string]{{1, "one"}, {3, "three"}, {2, "two"}},
+		},
+		{
+			name:      "move back to back",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 3,
+			mark:      2,
+			want:      []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+		},
+		{
+			name:      "missing key",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 4,
+			mark:      2,
+			want:      []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			err:       ErrKeyMissing,
+		},
+		{
+			name:      "missing mark",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 2,
+			mark:      4,
+			want:      []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			err:       ErrKeyMissing,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := newFromItems(t, c.items)
+			if err := m.MoveAfter(c.keyToMove, c.mark); !errors.Is(err, c.err) {
+				t.Fatalf("unexpected error: want: %v, got %v", c.err, err)
+			}
+			checkAll(t, m, c.want)
+		})
+	}
+}
+
+func TestMoveBefore(t *testing.T) {
+	cases := []struct {
+		name      string
+		items     []Item[int, string]
+		keyToMove int
+		mark      int
+		want      []Item[int, string]
+		err       error
+	}{
+		{
+			name:      "empty",
+			keyToMove: 1,
+			mark:      2,
+			want:      []Item[int, string]{},
+			err:       ErrKeyMissing,
+		},
+		{
+			name:      "one item",
+			items:     []Item[int, string]{{1, "one"}},
+			keyToMove: 1,
+			mark:      1,
+			want:      []Item[int, string]{{1, "one"}},
+		},
+		{
+			name:      "mark equals key",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 2,
+			mark:      2,
+			want:      []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+		},
+		{
+			name:      "move back to middle",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 3,
+			mark:      2,
+			want:      []Item[int, string]{{1, "one"}, {3, "three"}, {2, "two"}},
+		},
+		{
+			name:      "move back to front",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 3,
+			mark:      1,
+			want:      []Item[int, string]{{3, "three"}, {1, "one"}, {2, "two"}},
+		},
+		{
+			name:      "move middle to front",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 2,
+			mark:      1,
+			want:      []Item[int, string]{{2, "two"}, {1, "one"}, {3, "three"}},
+		},
+		{
+			name:      "move front to middle",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 1,
+			mark:      3,
+			want:      []Item[int, string]{{2, "two"}, {1, "one"}, {3, "three"}},
+		},
+		{
+			name:      "move front to front",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 1,
+			mark:      2,
+			want:      []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+		},
+		{
+			name:      "missing key",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 4,
+			mark:      2,
+			want:      []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			err:       ErrKeyMissing,
+		},
+		{
+			name:      "missing mark",
+			items:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToMove: 2,
+			mark:      4,
+			want:      []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			err:       ErrKeyMissing,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := newFromItems(t, c.items)
+			if err := m.MoveBefore(c.keyToMove, c.mark); !errors.Is(err, c.err) {
+				t.Fatalf("unexpected error: want: %v, got %v", c.err, err)
+			}
+			checkAll(t, m, c.want)
+		})
+	}
+}
+
+func TestFilter(t *testing.T) {
+	cases := []struct {
+		name   string
+		in     []Item[int, string]
+		filter func(int, string) bool
+		want   []Item[int, string]
+	}{
+		{
+			name: "no filter",
+			in:   []Item[int, string]{{1, "once"}, {2, "two"}},
+			want: []Item[int, string]{{1, "once"}, {2, "two"}},
+		},
+		{
+			name:   "exclude all",
+			in:     []Item[int, string]{{1, "once"}, {2, "two"}},
+			filter: func(_ int, _ string) bool { return false },
+			want:   []Item[int, string]{},
+		},
+		{
+			name:   "include all",
+			in:     []Item[int, string]{{1, "once"}, {2, "two"}},
+			filter: func(_ int, _ string) bool { return true },
+			want:   []Item[int, string]{{1, "once"}, {2, "two"}},
+		},
+		{
+			name:   "full test",
+			in:     []Item[int, string]{{1, "once"}, {2, "two"}, {3, "three"}},
+			filter: func(k int, _ string) bool { return k%2 == 0 },
+			want:   []Item[int, string]{{2, "two"}},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := newFromItems(t, c.in)
+			got := m.Filter(c.filter)
+			checkAll(t, got, c.want)
+		})
+	}
+}
+
+func TestRemove(t *testing.T) {
+	cases := []struct {
+		name        string
+		items       []Item[int, string]
+		keyToRemove int
+		value       string
+		ok          bool
+		want        []Item[int, string]
+	}{
+		{
+			name:        "empty",
+			keyToRemove: 1,
+			value:       "",
+			want:        []Item[int, string]{},
+		},
+		{
+			name:        "one item",
+			items:       []Item[int, string]{{1, "one"}},
+			keyToRemove: 1,
+			value:       "one",
+			ok:          true,
+			want:        []Item[int, string]{},
+		},
+		{
+			name:        "front",
+			items:       []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToRemove: 1,
+			value:       "one",
+			ok:          true,
+			want:        []Item[int, string]{{2, "two"}, {3, "three"}},
+		},
+		{
+			name:        "middle",
+			items:       []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToRemove: 2,
+			value:       "two",
+			ok:          true,
+			want:        []Item[int, string]{{1, "one"}, {3, "three"}},
+		},
+		{
+			name:        "back",
+			items:       []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToRemove: 3,
+			value:       "three",
+			ok:          true,
+			want:        []Item[int, string]{{1, "one"}, {2, "two"}},
+		},
+		{
+			name:        "no-op",
+			items:       []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			keyToRemove: 4,
+			want:        []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := newFromItems(t, c.items)
+			val, ok := m.Remove(c.keyToRemove)
+			if val != c.value {
+				t.Fatalf("unexpected value: want: %s, got: %s", c.value, val)
+			}
+			if ok != c.ok {
+				t.Fatalf("unexpected ok: want: %t, got: %t", c.ok, ok)
+			}
+			checkAll(t, m, c.want)
+		})
+	}
+}
+
+func TestPrev(t *testing.T) {
+	cases := []struct {
+		name  string
+		items []Item[int, string]
+		key   int
+		want  Item[int, string]
+		ok    bool
+	}{
+		{
+			name:  "empty",
+			items: []Item[int, string]{},
+			key:   1,
+			want:  Item[int, string]{},
+		},
+		{
+			name:  "single element",
+			items: []Item[int, string]{{1, "one"}},
+			key:   1,
+			want:  Item[int, string]{},
+		},
+		{
+			name:  "two elements",
+			items: []Item[int, string]{{1, "one"}, {2, "two"}},
+			key:   2,
+			want:  Item[int, string]{1, "one"},
+			ok:    true,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := newFromItems(t, c.items)
+			got, ok := m.Prev(c.key)
+			if ok != c.ok {
+				t.Fatalf("unexpected ok: want: %t, got %t", c.ok, ok)
+			}
+			if got != c.want {
+				t.Fatalf("unexpected value: want: %v, got %v", c.want, got)
+			}
+			// validate that the map was not modified by the Get operation
+			checkAll(t, m, c.items)
+		})
+	}
+}
+
+func TestNext(t *testing.T) {
+	cases := []struct {
+		name  string
+		items []Item[int, string]
+		key   int
+		want  Item[int, string]
+		ok    bool
+	}{
+		{
+			name:  "empty",
+			items: []Item[int, string]{},
+			key:   1,
+			want:  Item[int, string]{},
+		},
+		{
+			name:  "single element",
+			items: []Item[int, string]{{1, "one"}},
+			key:   1,
+			want:  Item[int, string]{},
+		},
+		{
+			name:  "two elements",
+			items: []Item[int, string]{{1, "one"}, {2, "two"}},
+			key:   1,
+			want:  Item[int, string]{2, "two"},
+			ok:    true,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := newFromItems(t, c.items)
+			got, ok := m.Next(c.key)
+			if ok != c.ok {
+				t.Fatalf("unexpected ok: want: %t, got %t", c.ok, ok)
+			}
+			if got != c.want {
+				t.Fatalf("unexpected value: want: %v, got %v", c.want, got)
+			}
+			// validate that the map was not modified by the Get operation
+			checkAll(t, m, c.items)
+		})
+	}
+}
+
+func newFromItems[K comparable, V any](t *testing.T, items []Item[K, V]) *OrderedMap[K, V] {
+	m := New[K, V]()
+	for _, item := range items {
+		if err := m.PushBack(item.Key, item.Value); err != nil {
+			t.Fatalf("error inserting key %v: %v", item.Key, err)
+		}
+	}
+	return m
+}
+
+// checkAll runs all correctness checks on an orderedmap without altering its internal state
 func checkAll[K comparable, V any](t *testing.T, om *OrderedMap[K, V], items []Item[K, V]) {
 	t.Helper()
 
@@ -291,6 +962,7 @@ func checkFrontBack[K comparable, V any](t *testing.T, om *OrderedMap[K, V], ite
 	}
 }
 
+// checkKeys checks the correctness of the Keys() method
 func checkKeys[K comparable, V any](t *testing.T, om *OrderedMap[K, V], items []Item[K, V]) {
 	t.Helper()
 
@@ -303,6 +975,7 @@ func checkKeys[K comparable, V any](t *testing.T, om *OrderedMap[K, V], items []
 	}
 }
 
+// checkKeys checks the correctness of the Prev() and Next() methods
 func checkPrevNext[K comparable, V any](t *testing.T, om *OrderedMap[K, V], items []Item[K, V]) {
 	t.Helper()
 
