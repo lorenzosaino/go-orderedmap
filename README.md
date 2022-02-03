@@ -21,15 +21,42 @@ This implementation is not safe for concurrent usage.
 
 ## Installation
 
-You can get this library by invoking
+You can get this library by invoking from your terminal
 
-    go get -u github.com/lorenzosaino/go-orderedmap
+```
+go get -u github.com/lorenzosaino/go-orderedmap
+```
+
+and then importing it in your code with
+
+```go
+import orderedmap "github.com/lorenzosaino/go-orderedmap"
+```
 
 Since it requires generics support, you will need Go 1.18 or above.
 
 ## Documentation
 
 See [Go doc](https://pkg.go.dev/github.com/lorenzosaino/go-orderedmap?tab=doc).
+
+## Development
+
+You can invoke `make help` to see all make targets provided.
+
+```bash
+$ make help
+all                            Run all checks and tests
+mod-upgrade                    Upgrade all vendored dependencies
+mod-update                     Ensure all used dependencies are tracked in go.{mod|sum} and vendored
+fmt-check                      Validate that all source files pass "go fmt"
+lint                           Run go lint
+vet                            Run go vet
+staticcheck                    Run staticcheck
+test                           Run all tests
+container-shell                Open a shell on a Docker container
+container-%                    Run any target of this Makefile in a Docker container
+help                           Print help
+```
 
 ## License
 
