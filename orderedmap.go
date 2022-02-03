@@ -11,12 +11,12 @@
 // if you intend to use it concurrently.
 //
 // To iterate over a map (where m is an *OrderedMap):
-//	for e, ok := m.Front(); ok; e, ok = m.Next(e) {
+//	for e, ok := m.Front(); ok; e, ok = m.Next(e.Key) {
 //		// do something with e
 //	}
 //
 // Similarly, to reverse iterate over a map::
-//	for e, ok := m.Back(); ok; e, ok = m.Prev(e) {
+//	for e, ok := m.Back(); ok; e, ok = m.Prev(e.Key) {
 //		// do something with e
 //	}
 //
@@ -242,7 +242,7 @@ func (m *OrderedMap[K, V]) Clear() {
 // f(key, value) == true
 func (m *OrderedMap[K, V]) Filter(f func(key K, value V) bool) *OrderedMap[K, V] {
 	out := New[K, V]()
-	for item, ok := m.Front(); ok; item, ok = m.Next(item) {
+	for item, ok := m.Front(); ok; item, ok = m.Next(item.Key) {
 		if f != nil && !f(item.Key, item.Value) {
 			continue
 		}
@@ -297,8 +297,8 @@ func (m *OrderedMap[K, V]) Items() []Item[K, V] {
 // Next returns the item succeeding a given item in the map.
 //
 // If the specified item is missing or it is at the back of the map, ok is set to false.
-func (m *OrderedMap[K, V]) Next(item Item[K, V]) (next Item[K, V], ok bool) {
-	e, ok := m.m[item.Key]
+func (m *OrderedMap[K, V]) Next(key K) (next Item[K, V], ok bool) {
+	e, ok := m.m[key]
 	if !ok {
 		return next, false
 	}
@@ -312,8 +312,8 @@ func (m *OrderedMap[K, V]) Next(item Item[K, V]) (next Item[K, V], ok bool) {
 // Prev returns the item preceding a given item in the map.
 //
 // If the specified item is missing or it is at the front of the map, ok is set to false.
-func (m *OrderedMap[K, V]) Prev(item Item[K, V]) (prev Item[K, V], ok bool) {
-	e, ok := m.m[item.Key]
+func (m *OrderedMap[K, V]) Prev(key K) (prev Item[K, V], ok bool) {
+	e, ok := m.m[key]
 	if !ok {
 		return prev, false
 	}

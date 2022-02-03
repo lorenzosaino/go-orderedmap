@@ -283,10 +283,10 @@ func checkFrontBack[K comparable, V any](t *testing.T, om *OrderedMap[K, V], ite
 	if diff := cmp.Diff(wantBack, gotBack); diff != "" {
 		t.Fatalf("unexpected back (-want +got):\n%s", diff)
 	}
-	if _, ok := om.Prev(gotFront); ok {
+	if _, ok := om.Prev(gotFront.Key); ok {
 		t.Fatal("front element has previous element")
 	}
-	if _, ok := om.Next(gotBack); ok {
+	if _, ok := om.Next(gotBack.Key); ok {
 		t.Fatal("back element has next element")
 	}
 }
@@ -309,7 +309,7 @@ func checkPrevNext[K comparable, V any](t *testing.T, om *OrderedMap[K, V], item
 	// iterate front to back
 	{
 		got := make([]Item[K, V], 0, len(items))
-		for e, ok := om.Front(); ok; e, ok = om.Next(e) {
+		for e, ok := om.Front(); ok; e, ok = om.Next(e.Key) {
 			got = append(got, e)
 		}
 
@@ -321,7 +321,7 @@ func checkPrevNext[K comparable, V any](t *testing.T, om *OrderedMap[K, V], item
 	// iterate back to front
 	{
 		got := make([]Item[K, V], 0, len(items))
-		for e, ok := om.Back(); ok; e, ok = om.Prev(e) {
+		for e, ok := om.Back(); ok; e, ok = om.Prev(e.Key) {
 			got = append(got, e)
 		}
 
