@@ -73,6 +73,19 @@ func (m *OrderedMap[K, V]) Get(key K) (value V, ok bool) {
 	return value, false
 }
 
+// Update updates the value associated to an existing key and returns the old value.
+//
+// If the key is not present, then ErrKeyMissing is returned.
+func (m *OrderedMap[K, V]) Update(key K, value V) (oldValue V, err error) {
+	if el, ok := m.m[key]; !ok {
+		return oldValue, ErrKeyMissing
+	} else {
+		oldValue := el.Value.Value
+		el.Value.Value = value
+		return oldValue, nil
+	}
+}
+
 // Front returns the item at the front of the map.
 //
 // If the map is empty, it returns the zero value of Item[K, V]
