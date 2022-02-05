@@ -1,9 +1,9 @@
 # Go ordered map
 
 [![GoDoc](https://img.shields.io/static/v1?label=godoc&message=reference&color=blue)](https://pkg.go.dev/github.com/lorenzosaino/go-orderedmap)
-[![Build](https://github.com/lorenzosaino/go-sysctl/workflows/Build/badge.svg)](https://github.com/lorenzosaino/go-orderedmap/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/lorenzosaino/go-sysctl)](https://goreportcard.com/report/github.com/lorenzosaino/go-orderedmap)
-[![License](https://img.shields.io/github/license/lorenzosaino/go-sysctl.svg)](https://github.com/lorenzosaino/go-orderedmap/blob/master/LICENSE)
+[![Build](https://github.com/lorenzosaino/go-orderedmap/workflows/Build/badge.svg)](https://github.com/lorenzosaino/go-orderedmap/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/lorenzosaino/go-orderedmap)](https://goreportcard.com/report/github.com/lorenzosaino/go-orderedmap)
+[![License](https://img.shields.io/github/license/lorenzosaino/go-orderedmap.svg)](https://github.com/lorenzosaino/go-orderedmap/blob/master/LICENSE)
 
 Go implementation of an ordered map using generics.
 
