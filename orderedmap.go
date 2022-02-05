@@ -1,4 +1,4 @@
-// Package ordermap implements an ordered map using generics.
+// Package orderedmap implements an ordered map using generics.
 //
 // An ordered map is a map whose values are ordered and all connected
 // with a doubly-linked list. It provides O(1) lookup,
@@ -77,13 +77,13 @@ func (m *OrderedMap[K, V]) Get(key K) (value V, ok bool) {
 //
 // If the key is not present, then ErrKeyMissing is returned.
 func (m *OrderedMap[K, V]) Update(key K, value V) (oldValue V, err error) {
-	if el, ok := m.m[key]; !ok {
+	el, ok := m.m[key]
+	if !ok {
 		return oldValue, ErrKeyMissing
-	} else {
-		oldValue := el.Value.Value
-		el.Value.Value = value
-		return oldValue, nil
 	}
+	oldValue = el.Value.Value
+	el.Value.Value = value
+	return oldValue, nil
 }
 
 // Front returns the item at the front of the map.

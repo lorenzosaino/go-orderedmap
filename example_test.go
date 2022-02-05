@@ -2,7 +2,7 @@ package orderedmap
 
 import "fmt"
 
-func ExampleOrderedMap_Iteration() {
+func ExampleOrderedMap_iteration() {
 	m := New[int, string]()
 	m.PushBack(1, "one")
 	m.PushBack(2, "two")
@@ -16,7 +16,7 @@ func ExampleOrderedMap_Iteration() {
 	// 3 three
 }
 
-func ExampleOrderedMap_ReverseIteration() {
+func ExampleOrderedMap_reverseIteration() {
 	m := New[int, string]()
 	m.PushBack(1, "one")
 	m.PushBack(2, "two")

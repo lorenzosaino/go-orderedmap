@@ -3,7 +3,7 @@ SHELL = /bin/bash -euo pipefail
 GO ?= go
 
 # Variables for container targets
-GO_VERSION ?= 1.18beta1
+GO_VERSION ?= 1.18beta2
 CONTAINER = golang:$(GO_VERSION)
 PKG = github.com/lorenzosaino/go-orderedmap
 DOCKER_RUN_FLAGS = --rm -it -v $$(pwd):/go/src/$(PKG) -w /go/src/$(PKG)
@@ -31,7 +31,7 @@ fmt-check: ## Validate that all source files pass "go fmt"
 lint: ## Run go lint
 	@[ -x "$(shell which golint)" ] || $(GO) install ./vendor/golang.org/x/lint/golint 2>/dev/null || $(GO) get -u golang.org/x/lint/golint
 	@# We need to explicitly exclude ./vendor because of https://github.com/golang/lint/issues/320
-	golint -set_exit_status $(shell $(GO)  list ./... | grep -v '/vendor/')
+	golint -set_exit_status $(shell $(GO)  list ./... | grep -v '/vendor/' | grep -v 'internal/list')
 
 .PHONY: vet
 vet: ## Run go vet
