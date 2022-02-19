@@ -38,7 +38,7 @@ func TestPointers(t *testing.T) {
 	{
 		got, ok := m.Get(1)
 		if !ok {
-			t.Fatalf("key not found")
+			t.Fatal("key not found")
 		}
 
 		if diff := cmp.Diff(want, got); diff != "" {
@@ -52,7 +52,7 @@ func TestPointers(t *testing.T) {
 
 		got, ok := m.Get(1)
 		if !ok {
-			t.Fatalf("key not found")
+			t.Fatal("key not found")
 		}
 
 		if diff := cmp.Diff(want, got); diff != "" {
@@ -677,6 +677,40 @@ func TestMoveBefore(t *testing.T) {
 	}
 }
 
+func TestReverse(t *testing.T) {
+	cases := []struct {
+		name  string
+		items []Item[int, string]
+		want  []Item[int, string]
+	}{
+		{
+			name:  "empty",
+			items: []Item[int, string]{},
+			want:  []Item[int, string]{},
+		},
+		{
+			name:  "one element",
+			items: []Item[int, string]{{1, "one"}},
+			want:  []Item[int, string]{{1, "one"}},
+		},
+		{
+			name:  "multiple elements",
+			items: []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
+			want:  []Item[int, string]{{3, "three"}, {2, "two"}, {1, "one"}},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := newFromItems(t, c.items)
+			got := m.Reverse()
+			checkAll(t, got, c.want)
+
+			doubleReverse := m.Reverse().Reverse()
+			checkAll(t, doubleReverse, c.items)
+		})
+	}
+}
+
 func TestFilter(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -686,24 +720,24 @@ func TestFilter(t *testing.T) {
 	}{
 		{
 			name: "no filter",
-			in:   []Item[int, string]{{1, "once"}, {2, "two"}},
-			want: []Item[int, string]{{1, "once"}, {2, "two"}},
+			in:   []Item[int, string]{{1, "one"}, {2, "two"}},
+			want: []Item[int, string]{{1, "one"}, {2, "two"}},
 		},
 		{
 			name:   "exclude all",
-			in:     []Item[int, string]{{1, "once"}, {2, "two"}},
+			in:     []Item[int, string]{{1, "one"}, {2, "two"}},
 			filter: func(_ int, _ string) bool { return false },
 			want:   []Item[int, string]{},
 		},
 		{
 			name:   "include all",
-			in:     []Item[int, string]{{1, "once"}, {2, "two"}},
+			in:     []Item[int, string]{{1, "one"}, {2, "two"}},
 			filter: func(_ int, _ string) bool { return true },
-			want:   []Item[int, string]{{1, "once"}, {2, "two"}},
+			want:   []Item[int, string]{{1, "one"}, {2, "two"}},
 		},
 		{
 			name:   "full test",
-			in:     []Item[int, string]{{1, "once"}, {2, "two"}, {3, "three"}},
+			in:     []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
 			filter: func(k int, _ string) bool { return k%2 == 0 },
 			want:   []Item[int, string]{{2, "two"}},
 		},
@@ -717,25 +751,111 @@ func TestFilter(t *testing.T) {
 	}
 }
 
-func TestRemove(t *testing.T) {
+func TestPopFront(t *testing.T) {
+	cases := []struct {
+		name   string
+		items  []Item[int, string]
+		popped Item[int, string]
+		ok     bool
+		want   []Item[int, string]
+	}{
+		{
+			name:   "empty",
+			popped: Item[int, string]{},
+			want:   []Item[int, string]{},
+		},
+		{
+			name:   "one item",
+			items:  []Item[int, string]{{1, "one"}},
+			popped: Item[int, string]{1, "one"},
+			ok:     true,
+			want:   []Item[int, string]{},
+		},
+		{
+			name:   "two items",
+			items:  []Item[int, string]{{1, "one"}, {2, "two"}},
+			popped: Item[int, string]{1, "one"},
+			ok:     true,
+			want:   []Item[int, string]{{2, "two"}},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := newFromItems(t, c.items)
+			item, ok := m.PopFront()
+			if item != c.popped {
+				t.Fatalf("unexpected value: want: %v, got: %v", c.popped, item)
+			}
+			if ok != c.ok {
+				t.Fatalf("unexpected ok: want: %t, got: %t", c.ok, ok)
+			}
+			checkAll(t, m, c.want)
+		})
+	}
+}
+
+func TestPopBack(t *testing.T) {
+	cases := []struct {
+		name   string
+		items  []Item[int, string]
+		popped Item[int, string]
+		ok     bool
+		want   []Item[int, string]
+	}{
+		{
+			name:   "empty",
+			popped: Item[int, string]{},
+			want:   []Item[int, string]{},
+		},
+		{
+			name:   "one item",
+			items:  []Item[int, string]{{1, "one"}},
+			popped: Item[int, string]{1, "one"},
+			ok:     true,
+			want:   []Item[int, string]{},
+		},
+		{
+			name:   "two items",
+			items:  []Item[int, string]{{1, "one"}, {2, "two"}},
+			popped: Item[int, string]{2, "two"},
+			ok:     true,
+			want:   []Item[int, string]{{1, "one"}},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := newFromItems(t, c.items)
+			item, ok := m.PopBack()
+			if item != c.popped {
+				t.Fatalf("unexpected value: want: %v, got: %v", c.popped, item)
+			}
+			if ok != c.ok {
+				t.Fatalf("unexpected ok: want: %t, got: %t", c.ok, ok)
+			}
+			checkAll(t, m, c.want)
+		})
+	}
+}
+
+func TestDelete(t *testing.T) {
 	cases := []struct {
 		name        string
 		items       []Item[int, string]
-		keyToRemove int
+		keyToDelete int
 		value       string
 		ok          bool
 		want        []Item[int, string]
 	}{
 		{
 			name:        "empty",
-			keyToRemove: 1,
+			keyToDelete: 1,
 			value:       "",
 			want:        []Item[int, string]{},
 		},
 		{
 			name:        "one item",
 			items:       []Item[int, string]{{1, "one"}},
-			keyToRemove: 1,
+			keyToDelete: 1,
 			value:       "one",
 			ok:          true,
 			want:        []Item[int, string]{},
@@ -743,7 +863,7 @@ func TestRemove(t *testing.T) {
 		{
 			name:        "front",
 			items:       []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
-			keyToRemove: 1,
+			keyToDelete: 1,
 			value:       "one",
 			ok:          true,
 			want:        []Item[int, string]{{2, "two"}, {3, "three"}},
@@ -751,7 +871,7 @@ func TestRemove(t *testing.T) {
 		{
 			name:        "middle",
 			items:       []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
-			keyToRemove: 2,
+			keyToDelete: 2,
 			value:       "two",
 			ok:          true,
 			want:        []Item[int, string]{{1, "one"}, {3, "three"}},
@@ -759,7 +879,7 @@ func TestRemove(t *testing.T) {
 		{
 			name:        "back",
 			items:       []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
-			keyToRemove: 3,
+			keyToDelete: 3,
 			value:       "three",
 			ok:          true,
 			want:        []Item[int, string]{{1, "one"}, {2, "two"}},
@@ -767,14 +887,14 @@ func TestRemove(t *testing.T) {
 		{
 			name:        "no-op",
 			items:       []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
-			keyToRemove: 4,
+			keyToDelete: 4,
 			want:        []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}},
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			m := newFromItems(t, c.items)
-			val, ok := m.Remove(c.keyToRemove)
+			val, ok := m.Delete(c.keyToDelete)
 			if val != c.value {
 				t.Fatalf("unexpected value: want: %s, got: %s", c.value, val)
 			}
@@ -891,6 +1011,15 @@ func checkAll[K comparable, V any](t *testing.T, om *OrderedMap[K, V], items []I
 	if want, got := len(items), om.Len(); want != got {
 		t.Fatalf("incorrect length: want: %d, got: %d", want, got)
 	}
+
+	// check consistency of legnth of internal structures
+	if want, got := om.Len(), len(om.m); want != got {
+		t.Fatalf("incorrect length: want: %d, got: %d", want, got)
+	}
+	if want, got := om.Len(), om.l.Len(); want != got {
+		t.Fatalf("incorrect length: want: %d, got: %d", want, got)
+	}
+
 	if diff := cmp.Diff(items, om.Items()); diff != "" {
 		t.Fatalf("unexpected keys (-want +got):\n%s", diff)
 	}

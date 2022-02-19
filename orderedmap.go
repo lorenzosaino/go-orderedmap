@@ -232,10 +232,10 @@ func (m *OrderedMap[K, V]) MoveBefore(key K, mark K) error {
 	return nil
 }
 
-// Remove removes an item from a map and returns the value removed.
+// Delete deletes an item from a map and returns the value deleted.
 //
 // If the item to be deleted was already missing from the map, ok is set to false.
-func (m *OrderedMap[K, V]) Remove(key K) (value V, ok bool) {
+func (m *OrderedMap[K, V]) Delete(key K) (value V, ok bool) {
 	el, ok := m.m[key]
 	if !ok {
 		return value, false
@@ -245,18 +245,66 @@ func (m *OrderedMap[K, V]) Remove(key K) (value V, ok bool) {
 	return val.Value, true
 }
 
-// Len returns the number of items stored in the ordered map
+// PopFront pops the element at the front of the map and returns its value.
+//
+// If the map is empty, it returns the zero value of Item[K, V]
+// and ok is set to false.
+func (m *OrderedMap[K, V]) PopFront() (item Item[K, V], ok bool) {
+	el := m.l.Front()
+	if el == nil {
+		return item, false
+	}
+
+	delete(m.m, el.Value.Key)
+	item = m.l.Remove(el)
+
+	return item, true
+}
+
+// PopBack pops the element at the back of the map and returns its value.
+//
+// If the map is empty, it returns the zero value of Item[K, V]
+// and ok is set to false.
+func (m *OrderedMap[K, V]) PopBack() (item Item[K, V], ok bool) {
+	el := m.l.Back()
+	if el == nil {
+		return item, false
+	}
+
+	delete(m.m, el.Value.Key)
+	item = m.l.Remove(el)
+
+	return item, true
+}
+
+// Len returns the number of items stored in the ordered map.
 func (m *OrderedMap[K, V]) Len() int {
 	return len(m.m)
 }
 
-// Clear empties the ordered map
+// Clear empties the ordered map.
 func (m *OrderedMap[K, V]) Clear() {
 	m.m = make(map[K]*list.Element[Item[K, V]])
 	m.l.Init()
 }
 
+// Reverse returns a copy of the ordered map with reversed ordering.
+func (m *OrderedMap[K, V]) Reverse() *OrderedMap[K, V] {
+	out := New[K, V]()
+	for item, ok := m.Front(); ok; item, ok = m.Next(item.Key) {
+		if err := out.PushFront(item.Key, item.Value); err != nil {
+			// while generally we should not panic from within a library, this
+			// error should never happen because all keys of the ordered map
+			// should be unique. If this error occurs, it is because of a bug
+			// in this library that needs to be fixed.
+			panic(fmt.Sprintf("error trying to insert key %v: %v", item.Key, err))
+		}
+	}
+	return out
+}
+
 // Filter returns a filtered copy of the ordered map.
+//
 // The returned map only includes the (key, value) items such that
 // f(key, value) == true
 func (m *OrderedMap[K, V]) Filter(f func(key K, value V) bool) *OrderedMap[K, V] {
@@ -266,7 +314,7 @@ func (m *OrderedMap[K, V]) Filter(f func(key K, value V) bool) *OrderedMap[K, V]
 			continue
 		}
 		if err := out.PushBack(item.Key, item.Value); err != nil {
-			// while generally we should never panic from a library, this
+			// while generally we should not panic from within a library, this
 			// error should never happen because all keys of the ordered map
 			// should be unique. If this error occurs, it is because of a bug
 			// in this library that needs to be fixed.
@@ -285,7 +333,7 @@ func (m *OrderedMap[K, V]) Map() map[K]V {
 	return out
 }
 
-// Item returns the a ordered slice of keys of the content of the map
+// Item returns the a ordered slice of keys of the content of the map.
 //
 // Note that while this function could be used to iterate over the items
 // stored in the ordered map, it allocates a new slice and copy all items
@@ -299,7 +347,7 @@ func (m *OrderedMap[K, V]) Keys() []K {
 	return out
 }
 
-// Item returns the a ordered slice of items of the content of the map
+// Item returns the a ordered slice of items of the content of the map.
 //
 // Note that while this function could be used to iterate over the items
 // stored in the ordered map, it allocates a new slice and copy all items
