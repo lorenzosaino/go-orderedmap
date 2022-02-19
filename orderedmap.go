@@ -2,7 +2,7 @@
 //
 // An ordered map is a map whose values are ordered and all connected
 // with a doubly-linked list. It provides O(1) lookup,
-// removal, removal, insertion to front/back,
+// update, removal, insertion to front/back,
 // insertion before/after a specific key,
 // move to front/back, move before/after a specific key.
 //
