@@ -25,16 +25,17 @@ jobs:
         cd $HOME/gotip/src
         ./make.bash
         echo "GOROOT=$HOME/gotip" >> $GITHUB_ENV
-        echo "$HOME/gotip/bin:$PATH" >> $GITHUB_PATH
+        echo "$HOME/gotip/bin" >> $GITHUB_PATH
+        echo "`$HOME/gotip/bin/go env GOPATH`/bin" >> $GITHUB_PATH
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Check go fmt compliance
       run: make fmt-check
-    # - name: Run go lint # FIXME: golint not found
-    #   run: make lint
+    - name: Run go lint
+      run: make lint
     - name: Run go vet
       run: make vet
-    # - name: Run staticcheck # FIXME: staticcheck not found
+    # - name: Run staticcheck # FIXME: investigate potential bug in staticcheck
     #   run: make staticcheck
     - name: Run tests
       run: make test
