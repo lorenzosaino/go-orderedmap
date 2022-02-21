@@ -306,7 +306,7 @@ func (m *OrderedMap[K, V]) Reverse() *OrderedMap[K, V] {
 // Filter returns a filtered copy of the ordered map.
 //
 // The returned map only includes the (key, value) items such that
-// f(key, value) == true
+// f(key, value) == true.
 func (m *OrderedMap[K, V]) Filter(f func(key K, value V) bool) *OrderedMap[K, V] {
 	out := New[K, V]()
 	for item, ok := m.Front(); ok; item, ok = m.Next(item.Key) {

@@ -1,11 +1,13 @@
-package orderedmap
+package orderedmap_test
 
 import (
 	"fmt"
+
+	"github.com/lorenzosaino/go-orderedmap"
 )
 
 func ExampleOrderedMap_iteration() {
-	m := New[int, string]()
+	m := orderedmap.New[int, string]()
 	m.PushBack(1, "one")
 	m.PushBack(2, "two")
 	m.PushBack(3, "three")
@@ -18,8 +20,8 @@ func ExampleOrderedMap_iteration() {
 	// 3 three
 }
 
-func ExampleOrderedMap_reverse_iteration() {
-	m := New[int, string]()
+func ExampleOrderedMap_reverseIteration() {
+	m := orderedmap.New[int, string]()
 	m.PushBack(1, "one")
 	m.PushBack(2, "two")
 	m.PushBack(3, "three")
@@ -33,7 +35,7 @@ func ExampleOrderedMap_reverse_iteration() {
 }
 
 func ExampleOrderedMap_Filter() {
-	m := New[int, string]()
+	m := orderedmap.New[int, string]()
 	m.PushBack(1, "one")
 	m.PushBack(2, "two")
 	m.PushBack(3, "three")
@@ -51,4 +53,32 @@ func ExampleOrderedMap_Filter() {
 	// Output:
 	// 2 two
 	// 4 four
+}
+
+func ExampleOrderedMap_Reverse() {
+	m := orderedmap.New[int, string]()
+	m.PushBack(1, "one")
+	m.PushBack(2, "two")
+	m.PushBack(3, "three")
+
+	fmt.Println("original map:")
+	for e, ok := m.Front(); ok; e, ok = m.Next(e.Key) {
+		fmt.Println(e.Key, e.Value)
+	}
+
+	m = m.Reverse()
+
+	fmt.Println("reversed map:")
+	for e, ok := m.Front(); ok; e, ok = m.Next(e.Key) {
+		fmt.Println(e.Key, e.Value)
+	}
+	// Output:
+	// original map:
+	// 1 one
+	// 2 two
+	// 3 three
+	// reversed map:
+	// 3 three
+	// 2 two
+	// 1 one
 }
