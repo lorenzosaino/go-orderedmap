@@ -3,7 +3,7 @@ SHELL = /bin/bash -euo pipefail
 GO ?= go
 
 # Variables for container targets
-GO_VERSION ?= 1.18rc1
+GO_VERSION ?= latest
 CONTAINER = golang:$(GO_VERSION)
 PKG = github.com/lorenzosaino/go-orderedmap
 DOCKER_RUN_FLAGS = --rm -it -v $$(pwd):/go/src/$(PKG) -w /go/src/$(PKG)
