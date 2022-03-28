@@ -35,7 +35,8 @@ jobs:
       run: make lint
     - name: Run go vet
       run: make vet
-    # - name: Run staticcheck # FIXME: investigate potential bug in staticcheck
+    # Commented out waiting for https://github.com/dominikh/go-tools/issues/1166 to be fixed
+    # - name: Run staticcheck
     #   run: make staticcheck
     - name: Run tests
       run: make test
