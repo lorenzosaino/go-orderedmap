@@ -1,10 +1,15 @@
 SHELL = /bin/bash -euo pipefail
 
+# Go binary for non-container targets
 GO ?= go
 
-# Variables for container targets
+# Go version for container targets
 GO_VERSION ?= latest
-CONTAINER = golang:$(GO_VERSION)
+
+# Container image for container targets
+# To use Go tip, set CONTAINER=aleksi/golang-tip:master
+CONTAINER ?= golang:$(GO_VERSION)
+
 PKG = github.com/lorenzosaino/go-orderedmap
 DOCKER_RUN_FLAGS = --rm -it -v $$(pwd):/go/src/$(PKG) -w /go/src/$(PKG)
 
