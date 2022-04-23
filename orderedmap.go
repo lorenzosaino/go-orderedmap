@@ -11,15 +11,16 @@
 // if you intend to use it concurrently.
 //
 // To iterate over a map (where m is an *OrderedMap):
+//
 //	for e, ok := m.Front(); ok; e, ok = m.Next(e.Key) {
 //		// do something with e
 //	}
 //
 // Similarly, to reverse iterate over a map::
+//
 //	for e, ok := m.Back(); ok; e, ok = m.Prev(e.Key) {
 //		// do something with e
 //	}
-//
 package orderedmap
 
 import (
