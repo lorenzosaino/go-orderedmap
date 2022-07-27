@@ -751,6 +751,92 @@ func TestFilter(t *testing.T) {
 	}
 }
 
+func TestRange(t *testing.T) {
+	cases := []struct {
+		name  string
+		items []Item[int, string]
+		want  []Item[int, string]
+		f     func(int, string) bool
+	}{
+		{
+			name:  "empty",
+			items: []Item[int, string]{},
+			want:  []Item[int, string]{},
+		},
+		{
+			name:  "full iteration",
+			items: []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}, {4, "four"}},
+			want:  []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}, {4, "four"}},
+		},
+		{
+			name:  "stop mid iteration",
+			items: []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}, {4, "four"}},
+			want:  []Item[int, string]{{1, "one"}, {2, "two"}},
+			f: func(k int, v string) bool {
+				return (k != 2)
+			},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := newFromItems(t, c.items)
+			got := make([]Item[int, string], 0, len(c.want))
+			f := func(k int, v string) bool {
+				got = append(got, Item[int, string]{k, v})
+				return c.f == nil || c.f(k, v)
+			}
+			m.Range(f)
+
+			if diff := cmp.Diff(c.want, got); diff != "" {
+				t.Fatalf("unexpected output (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestRangeReverse(t *testing.T) {
+	cases := []struct {
+		name  string
+		items []Item[int, string]
+		want  []Item[int, string]
+		f     func(int, string) bool
+	}{
+		{
+			name:  "empty",
+			items: []Item[int, string]{},
+			want:  []Item[int, string]{},
+		},
+		{
+			name:  "full iteration",
+			items: []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}, {4, "four"}},
+			want:  []Item[int, string]{{4, "four"}, {3, "three"}, {2, "two"}, {1, "one"}},
+		},
+		{
+			name:  "stop mid iteration",
+			items: []Item[int, string]{{1, "one"}, {2, "two"}, {3, "three"}, {4, "four"}},
+			want:  []Item[int, string]{{4, "four"}, {3, "three"}},
+			f: func(k int, v string) bool {
+				return (k != 3)
+			},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := newFromItems(t, c.items)
+			got := make([]Item[int, string], 0, len(c.want))
+			f := func(k int, v string) bool {
+				got = append(got, Item[int, string]{k, v})
+				return c.f == nil || c.f(k, v)
+			}
+			m.RangeReverse(f)
+
+			if diff := cmp.Diff(c.want, got); diff != "" {
+				t.Fatalf("unexpected output (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
 func TestPopFront(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -994,6 +1080,7 @@ func TestNext(t *testing.T) {
 	}
 }
 
+// newFromItems creates a new ordered map from a slice of items
 func newFromItems[K comparable, V any](t *testing.T, items []Item[K, V]) *OrderedMap[K, V] {
 	m := New[K, V]()
 	for _, item := range items {

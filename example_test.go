@@ -11,9 +11,12 @@ func ExampleOrderedMap_iteration() {
 	m.PushBack(1, "one")
 	m.PushBack(2, "two")
 	m.PushBack(3, "three")
-	for e, ok := m.Front(); ok; e, ok = m.Next(e.Key) {
-		fmt.Println(e.Key, e.Value)
+
+	f := func(k int, v string) bool {
+		fmt.Println(k, v)
+		return true
 	}
+	m.Range(f)
 	// Output:
 	// 1 one
 	// 2 two
@@ -25,9 +28,12 @@ func ExampleOrderedMap_reverseIteration() {
 	m.PushBack(1, "one")
 	m.PushBack(2, "two")
 	m.PushBack(3, "three")
-	for e, ok := m.Back(); ok; e, ok = m.Prev(e.Key) {
-		fmt.Println(e.Key, e.Value)
+
+	f := func(k int, v string) bool {
+		fmt.Println(k, v)
+		return true
 	}
+	m.RangeReverse(f)
 	// Output:
 	// 3 three
 	// 2 two

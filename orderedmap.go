@@ -9,18 +9,6 @@
 // This implementation is not safe for concurrent usage. You
 // may want to use a sync.RWLock to synchronize access to it
 // if you intend to use it concurrently.
-//
-// To iterate over a map (where m is an *OrderedMap):
-//
-//	for e, ok := m.Front(); ok; e, ok = m.Next(e.Key) {
-//		// do something with e
-//	}
-//
-// Similarly, to reverse iterate over a map::
-//
-//	for e, ok := m.Back(); ok; e, ok = m.Prev(e.Key) {
-//		// do something with e
-//	}
 package orderedmap
 
 import (
@@ -323,6 +311,26 @@ func (m *OrderedMap[K, V]) Filter(f func(key K, value V) bool) *OrderedMap[K, V]
 		}
 	}
 	return out
+}
+
+// Range calls f sequentially for each key and value present in the ordered map
+// starting from the front element. If f returns false, Range stops the iteration.
+func (m *OrderedMap[K, V]) Range(f func(key K, value V) bool) {
+	for e := m.l.Front(); e != nil; e = e.Next() {
+		if !f(e.Value.Key, e.Value.Value) {
+			return
+		}
+	}
+}
+
+// Range calls f sequentially for each key and value present in the ordered map
+// starting from the back element. If f returns false, RangeReverse stops the iteration.
+func (m *OrderedMap[K, V]) RangeReverse(f func(key K, value V) bool) {
+	for e := m.l.Back(); e != nil; e = e.Prev() {
+		if !f(e.Value.Key, e.Value.Value) {
+			return
+		}
+	}
 }
 
 // Map returns a map of all items stored in the OrderedMap.
