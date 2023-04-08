@@ -15,7 +15,7 @@ DOCKER_RUN_FLAGS = --rm -it -v $$(pwd):/go/src/$(PKG) -w /go/src/$(PKG)
 
 export GO111MODULE=on
 
-all: fmt-check lint vet staticcheck test ## Run all checks and tests
+all: fmt-check vet govulncheck nilness staticcheck test ## Run all checks and tests
 
 .PHONY: mod-upgrade
 mod-upgrade: ## Upgrade all vendored dependencies
@@ -32,20 +32,24 @@ mod-update: ## Ensure all used dependencies are tracked in go.{mod|sum} and vend
 fmt-check: ## Validate that all source files pass "go fmt"
 	exit $(shell $(GO) fmt ./... | wc -l)
 
-.PHONY: lint
-lint: ## Run go lint
-	@[ -x "$(shell which golint)" ] || $(GO) install ./vendor/golang.org/x/lint/golint 2>/dev/null || $(GO) get -u golang.org/x/lint/golint
-	@# We need to explicitly exclude ./vendor because of https://github.com/golang/lint/issues/320
-	golint -set_exit_status $(shell $(GO)  list ./... | grep -v '/vendor/' | grep -v 'internal/list')
-
 .PHONY: vet
 vet: ## Run go vet
 	$(GO) vet ./...
 
 .PHONY: staticcheck
 staticcheck: ## Run staticcheck
-	@[ -x "$(shell which staticcheck)" ] || $(GO) install ./vendor/honnef.co/go/tools/cmd/staticcheck 2>/dev/null || $(GO) get -u honnef.co/go/tools/cmd/staticcheck
+	$(GO) install ./vendor/honnef.co/go/tools/cmd/staticcheck 2>/dev/null || @[ -x "$(shell which staticcheck)" ] || $(GO) install honnef.co/go/tools/cmd/staticcheck@latest
 	staticcheck ./...
+
+.PHONY: nilness
+nilness: ## Run nilness
+	$(GO) install ./vendor/golang.org/x/tools/go/analysis/passes/nilness/cmd/nilness 2>/dev/null || [ -x "$(shell which nilness)" ] || $(GO) install golang.org/x/tools/go/analysis/passes/nilness/cmd/nilness@latest
+	nilness ./...
+
+.PHONY: govulncheck
+govulncheck: ## Run govulncheck
+	$(GO) install ./vendor/golang.org/x/vuln/cmd/govulncheck 2>/dev/null || [ -x "$(shell which govulncheck)" ] || $(GO) install golang.org/x/vuln/cmd/govulncheck@latest
+	govulncheck ./...
 
 .PHONY: test
 test: ## Run all tests
